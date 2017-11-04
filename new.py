@@ -57,6 +57,7 @@ def graph_data(stock):
             if 'values' not in line and 'labels' not in line:
                 stock_data.append(line)
 
+
     date, closep, highp, lowp, openp, volume = np.loadtxt(stock_data,
                                                           delimiter=',',
                                                           unpack=True,
