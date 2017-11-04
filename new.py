@@ -23,6 +23,10 @@ def moving_average(values, window):
     return smas
 
 
+def high_minus_low(highs, lows):
+    return highs - lows
+
+
 def bytespdate2num(fmt, encoding='utf-8'):
     strconverter = mdates.strpdate2num(fmt)
 
@@ -37,12 +41,13 @@ def graph_data(stock):
     fig = plt.figure()
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=1, colspan=1)
     plt.title(stock)
+    plt.ylabel('H-L')
     ax2 = plt.subplot2grid((6, 1), (1, 0), rowspan=4, colspan=1)
-    plt.xlabel('Date')
     plt.ylabel('Price')
     ax3 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1)
+    plt.ylabel('MAvgs')
 
-    stock_price_url = 'http://chartapi.finance.yahoo.com/instrument/1.0/' + stock + '/chartdata;type=quote;range=1m/csv'
+    stock_price_url = 'http://chartapi.finance.yahoo.com/instrument/1.0/' + stock + '/chartdata;type=quote;range=1y/csv'
     source_code = urllib.request.urlopen(stock_price_url).read().decode()
     stock_data = []
     split_source = source_code.split('\n')
@@ -66,59 +71,60 @@ def graph_data(stock):
         ohlc.append(append_me)
         x += 1
 
+    ma1 = moving_average(closep, MA1)
+    ma2 = moving_average(closep, MA2)
+    start = len(date[MA2 - 1:])
 
-ma1 = moving_average(closep, MA1)
-ma2 = moving_average(closep, MA2)
-start = len(date[MA2 - 1:])
-h_l = list(map(heighs_minus_lows, heighp, lowp))
-ax1.plot_data(data, h_l, '-')
+    h_l = list(map(high_minus_low, highp, lowp))
 
-candlestick_ohlc(ax2, ohlc, width=0.4, colorup='#77d879', colordown='#db3f3f')
+    ax1.plot_date(date, h_l, '-')
+    ax1.yaxis.set_major_locator(mticker.MaxNLocator(nbins=5, prune='lower'))
 
-for label in ax2.xaxis.get_ticklabels():
-    label.set_rotation(45)
+    candlestick_ohlc(ax2, ohlc, width=0.4, colorup='#77d879', colordown='#db3f3f')
 
-ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-ax2.xaxis.set_major_locator(mticker.MaxNLocator(10))
-ax2.grid(True)
+    ax2.grid(True)
 
-bbox_props = dict(boxstyle='round', fc='w', ec='k', lw=1)
+    bbox_props = dict(boxstyle='round', fc='w', ec='k', lw=1)
 
-ax2.annotate(str(closep[-1]), (date[-1], closep[-1]),
-             xytext=(date[-1] + 4, closep[-1]), bbox=bbox_props)
+    ax2.annotate(str(closep[-1]), (date[-1], closep[-1]),
+                 xytext=(date[-1] + 4, closep[-1]), bbox=bbox_props)
 
-
-def heighs_minus_lows(heighs, lows):
-    return heighs - lows
-
-
-heighs = [11, 21, 31, 41, 51]
-lows = [1, 8, 0, 7, 6]
-
-h_l = list(map(heighs_minus_lows, heighs, lows))
-
-print(h_l)
-##    # Annotation example with arrow
-##    ax1.annotate('Bad News!',(date[11],highp[11]),
-##                 xytext=(0.8, 0.9), textcoords='axes fraction',
-##                 arrowprops = dict(facecolor='grey',color='grey'))
-##
-##
-##    # Font dict example
-##    font_dict = {'family':'serif',
-##                 'color':'darkred',
-##                 'size':15}
-##    # Hard coded text
-##    ax1.text(date[10], closep[1],'Text Example', fontdict=font_dict)
+    ##    # Annotation example with arrow
+    ##    ax2.annotate('Bad News!',(date[11],highp[11]),
+    ##                 xytext=(0.8, 0.9), textcoords='axes fraction',
+    ##                 arrowprops = dict(facecolor='grey',color='grey'))
+    ##
+    ##
+    ##    # Font dict example
+    ##    font_dict = {'family':'serif',
+    ##                 'color':'darkred',
+    ##                 'size':15}
+    ##    # Hard coded text
+    ##    ax2.text(date[10], closep[1],'Text Example', fontdict=font_dict)
 
 
-ax3.plot(date[-start:], ma1[-start:])
-ax3.plot(date[-start:], ma2[-start:])
 
-#
-# plt.legend()
+    ax3.plot(date[-start:], ma1[-start:], linewidth=1)
+    ax3.plot(date[-start:], ma2[-start:], linewidth=1)
 
-plt.subplots_adjust(left=0.11, bottom=0.24, right=0.90, top=0.90, wspace=0.2, hspace=0)
-plt.show()
+    ax3.fill_between(date[-start:], ma2[-start:], ma1[-start:],
+                     where=(ma1[-start:] < ma2[-start:]),
+                     facecolor='r', edgecolor='r', alpha=0.5)
+
+    ax3.fill_between(date[-start:], ma2[-start:], ma1[-start:],
+                     where=(ma1[-start:] > ma2[-start:]),
+                     facecolor='g', edgecolor='g', alpha=0.5)
+
+    ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    ax3.xaxis.set_major_locator(mticker.MaxNLocator(10))
+
+    for label in ax3.xaxis.get_ticklabels():
+        label.set_rotation(45)
+
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    plt.setp(ax2.get_xticklabels(), visible=False)
+    plt.subplots_adjust(left=0.11, bottom=0.24, right=0.90, top=0.90, wspace=0.2, hspace=0)
+    plt.show()
+
 
 graph_data('EBAY')
