@@ -38,13 +38,14 @@ def bytespdate2num(fmt, encoding='utf-8'):
 
 
 def graph_data(stock):
-    fig = plt.figure()
+    fig = plt.figure(facecolor='#f0f0f0')
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=1, colspan=1)
     plt.title(stock)
     plt.ylabel('H-L')
-    ax2 = plt.subplot2grid((6, 1), (1, 0), rowspan=4, colspan=1)
+    ax2 = plt.subplot2grid((6, 1), (1, 0), rowspan=4, colspan=1, sharex=ax1)
     plt.ylabel('Price')
-    ax3 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1)
+    ax2v = ax2.twinx()
+    ax3 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
     plt.ylabel('MAvgs')
 
     stock_price_url = 'http://chartapi.finance.yahoo.com/instrument/1.0/' + stock + '/chartdata;type=quote;range=1y/csv'
@@ -56,7 +57,6 @@ def graph_data(stock):
         if len(split_line) == 6:
             if 'values' not in line and 'labels' not in line:
                 stock_data.append(line)
-
 
     date, closep, highp, lowp, openp, volume = np.loadtxt(stock_data,
                                                           delimiter=',',
@@ -78,11 +78,14 @@ def graph_data(stock):
 
     h_l = list(map(high_minus_low, highp, lowp))
 
-    ax1.plot_date(date, h_l, '-')
-    ax1.yaxis.set_major_locator(mticker.MaxNLocator(nbins=5, prune='lower'))
+    ax1.plot_date(date[-start:], h_l[-start:], '-', label='H-L')
+    ax1.yaxis.set_major_locator(mticker.MaxNLocator(nbins=4, prune='lower'))
 
-    candlestick_ohlc(ax2, ohlc, width=0.4, colorup='#77d879', colordown='#db3f3f')
+    candlestick_ohlc(ax2, ohlc[-start:], width=0.4, colorup='#77d879', colordown='#db3f3f')
 
+    ax2v.plot([], [], color='#0079a3', alpha=0.3, label='Volume')
+
+    ax2.yaxis.set_major_locator(mticker.MaxNLocator(nbins=7, prune='upper'))
     ax2.grid(True)
 
     bbox_props = dict(boxstyle='round', fc='w', ec='k', lw=1)
@@ -103,10 +106,13 @@ def graph_data(stock):
     ##    # Hard coded text
     ##    ax2.text(date[10], closep[1],'Text Example', fontdict=font_dict)
 
+    ax2v.fill_between(date[-start:], ma1[-start:], facecolors='#0079a3', alpha=0.4)
+    ax2v.axes.yaxis.set_ticklabels([])
+    ax2v.grid(False)
+    ax2v.set_ylim(0, 3 * volume.max())
 
-
-    ax3.plot(date[-start:], ma1[-start:], linewidth=1)
-    ax3.plot(date[-start:], ma2[-start:], linewidth=1)
+    ax3.plot(date[-start:], ma1[-start:], linewidth=1, label=(str(MA1 + 'MA')))
+    ax3.plot(date[-start:], ma2[-start:], linewidth=1, label=(str(MA2 + 'MA')))
 
     ax3.fill_between(date[-start:], ma2[-start:], ma1[-start:],
                      where=(ma1[-start:] < ma2[-start:]),
@@ -119,13 +125,25 @@ def graph_data(stock):
     ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
     ax3.xaxis.set_major_locator(mticker.MaxNLocator(10))
 
+    ax3.yaxis.set_major_locator(mticker.MaxNLocator(nbins=5, prune='upper'))
+
     for label in ax3.xaxis.get_ticklabels():
         label.set_rotation(45)
 
     plt.setp(ax1.get_xticklabels(), visible=False)
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.subplots_adjust(left=0.11, bottom=0.24, right=0.90, top=0.90, wspace=0.2, hspace=0)
+    ax1.legend()
+    leg = ax1.legend(loc=9, ncol=2, prop={'size': 11})
+    leg.get_frame().set_alpha(0.4)
+    ax2v.legend()
+    leg = ax2v.legend(loc=9, ncol=2, prop={'size': 11})
+    leg.get_frame().set_alpha(0.4)
+    ax3.legend()
+    leg = ax3.legend(loc=9, ncol=2, prop={'size': 11})
+    leg.get_frame().set_alpha(0.4)
     plt.show()
+    fig.savefig('chart.png', facecolor=fig.get_facecolor())
 
 
 graph_data('EBAY')
